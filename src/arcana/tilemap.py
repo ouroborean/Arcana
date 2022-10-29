@@ -1,5 +1,6 @@
 from arcana.tile import Tile, TileStatus
 from arcana.direction import Direction, offset_to_direction, direction_to_offset
+from arcana.scenery import Scenery, Portal
 
 import random
 from typing import Tuple
@@ -126,6 +127,55 @@ class TileMap():
                     break
                 else:
                     roll -= weight
+    
+    def border_tile_map(self, args):
+        for i in range(self.width * self.height):
+            if i % self.width == 0 or i % self.width == self.width - 1 or i // self.width == 0 or i // self.width == self.height - 1:
+                self.get_tile(self.num_to_coord(i)).apply_scenery(Scenery(*args))
+    
+    def add_terrain(self, scenery, clutter_seed):
+        for i in range(self.width * self.height):
+            if not self.is_border_tile(i):
+                roll = random.randint(1, 100)
+                if roll <= clutter_seed:
+                    roll = random.randint(1, 100)
+                    for weight, details in scenery.items():
+                        if roll <= weight:
+                            self.get_tile(self.num_to_coord(i)).apply_scenery(Scenery(*details))
+                            break
+                        else:
+                            roll -= weight
+                            
+    def add_portals(self, portal_package):
+        for package in portal_package:
+            # if there's only one tuple in the first part of the package,
+            # it's a guaranteed coordinate for the portal
+            if len(package[0]) == 1:
+                portal = Portal(*package[1])
+                self.get_tile(*package[0]).remove_scenery()
+                self.get_tile(*package[0]).apply_scenery(portal)
+                portal.lock_location(*package[0])
+                print(f"Adding portal {portal.id} to {portal.area_dest} at {package[0]}")
+                self.portals.append(portal)
+            elif len(package[0]) > 1:
+                #if there's more than one tuple in the first part of the package,
+                #the tuples are a rectangular bounding box for a random placement of
+                #the portal
+                
+                first_corner = package[0][0]
+                width = package[0][1][0]
+                height = package[0][1][1]
+                portal = Portal(*package[1])
+                tiles_in_rect = list()
+                for x in range(width):
+                    for y in range(height):
+                        tiles_in_rect.append(self.get_tile((first_corner[0] + x, first_corner[1] + y)))
+                dest = random.choice(tiles_in_rect)
+                dest.remove_scenery()
+                dest.apply_scenery(portal)
+                portal.lock_location(dest.loc)
+                print("Portal added!")
+                self.portals.append(portal)
     
     def num_to_coord(self, num: int) -> Tuple[int, int]:
         return (num % self.width, num // self.width)

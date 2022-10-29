@@ -1,8 +1,11 @@
 from arcana.direction import Direction, counter_direction
 import sdl2.ext
 
-from typing import Tuple
+from typing import Tuple, TYPE_CHECKING
 import enum
+
+if TYPE_CHECKING:
+    from arcana.scenery import Scenery
 
 @enum.unique
 class TileStatus(enum.IntEnum):
@@ -18,7 +21,7 @@ class Tile():
     neighbor: dict[Direction, "Tile"]
     #actor: "Actor"
     #game_objects: list["GameObject"]
-    #scenery: "Scenery"
+    scenery: "Scenery"
     image_path: str
     g_cost: int
     h_cost: int
@@ -67,9 +70,10 @@ class Tile():
         """Returns the status of the tile, as it relates to the allegiance of the actors on it, and the status of any terrain or scenery it might contain."""
         #TODO check for allied, enemy, or player status of actor, if one exists
         
-        #TODO check for blocking terrain, if scenery exists
-
-        return TileStatus.EMPTY
+        if self.scenery and not 0 in self.scenery.status:
+            return TileStatus.BLOCKED
+        else:
+            return TileStatus.EMPTY
     
     def set_g_cost(self, cost):
         """The cumulative pathing value of the tile along the path the A* algorithm is currently walking. Will self adjust to catch changes in the shortest path, for erroneous circuitous pathing."""
@@ -94,8 +98,11 @@ class Tile():
     def walkable(self, pedestrian):
         """Checks the state of the tile and the state of the Actor attempting to enter it and returns a boolean value defining whether or not they can."""
         #TODO check values of the pedestrian Actor for allegiance and affects like insubstantial...ness
-        
-        return self.status == TileStatus.EMPTY
+        if self.status == TileStatus.BLOCKED:
+            output = False
+        elif self.status == TileStatus.EMPTY:
+            output = True
+        return output
     
     def set_loc(self, location):
         self.loc = location
