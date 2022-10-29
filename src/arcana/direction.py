@@ -1,4 +1,5 @@
 import enum
+from typing import Tuple
 
 @enum.unique
 class Direction(enum.IntEnum):
@@ -50,5 +51,5 @@ def counter_direction(direction) -> Direction:
 def offset_to_direction(pos_offset) -> Direction:
     return pos_to_direction[pos_offset]
 
-def direction_to_offset(direction) -> Direction:
+def direction_to_offset(direction) -> Tuple[int, int]:
     return direction_to_pos[direction]
