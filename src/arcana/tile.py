@@ -30,6 +30,7 @@ class Tile():
     hover_lens: sdl2.ext.SoftwareSprite
     hostile_lens: sdl2.ext.SoftwareSprite
     range_lens: sdl2.ext.SoftwareSprite
+    prefab: bool
     
     def __add__(self, other):
         return (self.loc[0] + other[0], self.loc[1] + other[1])
@@ -43,6 +44,7 @@ class Tile():
         self.g_cost = 0
         self.h_cost = 0
         self.marked_for_prefab = False
+        self.prefab = False
         self.neighbor = {
             Direction.NORTH: None,
             Direction.SOUTH: None,
@@ -75,6 +77,9 @@ class Tile():
             return TileStatus.BLOCKED
         else:
             return TileStatus.EMPTY
+    
+    def mark_as_prefab(self):
+        self.prefab = True
     
     def set_g_cost(self, cost):
         """The cumulative pathing value of the tile along the path the A* algorithm is currently walking. Will self adjust to catch changes in the shortest path, for erroneous circuitous pathing."""

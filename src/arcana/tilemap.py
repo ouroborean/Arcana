@@ -11,12 +11,14 @@ class TileMap():
     width: int
     height: int
     portals: list
+    prefabs: set
     
     def __init__(self, dimensions: Tuple[int, int]):
         self.width, self.height = dimensions
         self.tiles = [None] * (self.width * self.height)
         self.portals = list()
         self.enemies = list()
+        self.prefabs = set()
         
     def is_border_tile(self, i) -> bool:
         return i % self.width == 0 or i % self.width == self.width - 1 or i // self.width == 0 or i // self.width == self.height - 1
@@ -52,11 +54,49 @@ class TileMap():
                     tile.set_neighbor(offset_to_direction((offset1, offset2)), self.get_tile((offset_x, offset_y)))
 
         self.tiles[num_loc] = tile
+        
+    def add_scenery(self, scenery, tile):
+        if tile.scenery:
+            tile.remove_scenery()
+        tile.apply_scenery(scenery)
+        
+    def add_scenery_to_adjacent_tile(self, current_tile, scenery, direction):
+        location = current_tile + direction_to_offset(direction)
+        if self.valid_coord(location):
+            self.add_scenery(scenery, self.get_tile(location))
+            
+    def add_scenery_in_line(self, scenery_components, origin, direction, length):
+        source_tile = self.get_tile(origin)
+        source_tile.apply_scenery(Scenery(*scenery_components))
+        for _ in range(length - 1):
+            new_coord = source_tile + direction_to_offset(direction)
+            if not self.valid_coord(new_coord):
+                break
+            self.add_scenery_to_adjacent_tile(source_tile, Scenery(*scenery_components), direction)
+            source_tile = self.get_tile(new_coord)
     
     def add_adjacent_tile(self, current_tile, new_tile, direction):
         location = current_tile + direction_to_offset(direction)
         if self.valid_coord(location):
             self.add_tile(new_tile, location)
+    
+    def add_tiles_in_line(self, new_tile_components, origin, direction, length):
+        source_tile = Tile(*new_tile_components)
+        self.add_tile(source_tile, origin)
+        for _ in range(length - 1):
+            if not self.valid_coord(source_tile + direction_to_offset(direction)):
+                break
+            new_tile = Tile(*new_tile_components)
+            self.add_adjacent_tile(source_tile, new_tile, direction)
+            source_tile = new_tile
+    
+    def add_tiles_by_prefab(self, prefab, origin):
+        for tile in prefab.tiles:
+            if tile:
+                tile.mark_as_prefab()
+                coord = tile + origin
+                self.add_tile(tile, coord)
+                
     
     def get_tile(self, coord: Tuple[int, int]) -> Tile:
         if self.valid_coord(coord):
@@ -138,7 +178,32 @@ class TileMap():
             if i % self.width == 0 or i % self.width == self.width - 1 or i // self.width == 0 or i // self.width == self.height - 1:
                 self.get_tile(self.num_to_coord(i)).apply_scenery(Scenery(*args))
     
-    def add_terrain(self, scenery, clutter_seed):
+    
+    def add_prefab(self, prefabs):
+        prefab_markers = [tile for tile in self.tiles if tile.marked_for_prefab]
+        for tile in prefab_markers:
+            for odds, prefab in prefabs.items():
+                roll = random.randint(1, 100)
+                newfab = prefab()
+                if roll <= odds and not newfab.name in self.prefabs:
+                    origin = (tile.loc[0] - newfab.entrance_loc[0], tile.loc[1] - newfab.entrance_loc[1])
+                    if self.space_for_prefab(newfab, origin):
+                        self.add_tiles_by_prefab(newfab, origin)
+                        self.prefabs.add(newfab.name)
+                else:
+                    roll -= odds
+                    
+    def space_for_prefab(self, prefab, origin):
+        for tile in prefab.tiles:
+            if tile:
+                if not self.valid_coord(tile + origin) or self.get_tile(tile + origin).prefab:
+                    return False
+        for portal in self.portals:
+            if not self.get_shortest_path(self.get_tile(portal.loc), self.get_tile((prefab.entrance_loc[0] + origin[0], prefab.entrance_loc[1] + origin[1]))):
+                return False
+        return True
+    
+    def add_random_scenery(self, scenery, clutter_seed):
         for i in range(self.width * self.height):
             if not self.is_border_tile(i):
                 roll = random.randint(1, 100)

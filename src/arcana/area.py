@@ -1,5 +1,5 @@
 
-from arcana.prefab import Prefab
+from arcana.prefab import Prefab, prefab_db
 import random
 import enum
 import typing
@@ -51,9 +51,9 @@ class Area():
             return self.tilemap
         else:
             tilemap = TileMap(self.dimensions)
-            
             tilemap.carpet_tile_map(self.floor_tiles, self.prefab_count)
-            tilemap.add_terrain(self.terrain_tiles, self.clutter_seed)
+            tilemap.add_random_scenery(self.terrain_tiles, self.clutter_seed)
+            tilemap.add_prefab(self.prefabs)
             tilemap.add_portals(self.portals)
             if self.border_style == BorderStyle.TERRAIN:
                 tilemap.border_tile_map(self.terrain_tiles[list(self.terrain_tiles.keys())[0]])
@@ -68,7 +68,7 @@ class Area():
 forest_floor_tiles = {65: ("grasstile.png",), 35: ("dirttile.png",)}
 forest_terrain_tiles = {75: ("treetile.png", ("SOLID", "OPAQUE")), 15: ("bush.png", ("SOLID",)), 10: ("rock.png", ("SOLID",))}
 forest_enemy_group = {36: {"name": "Goblin", "statpool": "goblin", "level": 1, "image": "goblin.png", "damage_range": (1, 5)}, 34: {"name": "Kobold", "statpool": "kobold", "level": 1, "image": "kobold.png", "damage_range": (2, 3)}, 20: {"name": "Wolf", "statpool": "wolf", "level": 1, "image": "wolf.png", "damage_range": (2, 5)}, 10: {"name": "Ogre", "statpool": "ogre", "level": 2, "image": "ogre.png", "damage_range": (3, 8)}}
-
+forest_prefabs = {51: prefab_db["druid"], 49: prefab_db["tree_alley"]}
 
 def make_test_area():
     area = Area((33, 13))
@@ -76,8 +76,9 @@ def make_test_area():
     area.terrain_tiles = forest_terrain_tiles
     area.border_style = BorderStyle.TERRAIN
     area.enemy_spawns = forest_enemy_group
+    area.prefabs = forest_prefabs
     area.spawn_count = 6
-    area.prefab_count = 2
+    area.prefab_count = 6
     #protocol for adding portals:
     # List of tuples, each tuple covering a single portal
     # ( (Either Coordinates for the static location of the portal or a tuple of two coordinates for a range of random possible locations), (constructor arguments for the portal Scenery object))
