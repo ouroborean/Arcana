@@ -198,6 +198,9 @@ class TileMap():
             if tile:
                 if not self.valid_coord(tile + origin) or self.get_tile(tile + origin).prefab:
                     return False
+                for portal in self.portals:
+                    if tile.loc == portal.loc:
+                        return False
         for portal in self.portals:
             if not self.get_shortest_path(self.get_tile(portal.loc), self.get_tile((prefab.entrance_loc[0] + origin[0], prefab.entrance_loc[1] + origin[1]))):
                 return False

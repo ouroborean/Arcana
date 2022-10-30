@@ -53,8 +53,8 @@ class Area():
             tilemap = TileMap(self.dimensions)
             tilemap.carpet_tile_map(self.floor_tiles, self.prefab_count)
             tilemap.add_random_scenery(self.terrain_tiles, self.clutter_seed)
-            tilemap.add_prefab(self.prefabs)
             tilemap.add_portals(self.portals)
+            tilemap.add_prefab(self.prefabs)
             if self.border_style == BorderStyle.TERRAIN:
                 tilemap.border_tile_map(self.terrain_tiles[list(self.terrain_tiles.keys())[0]])
             elif self.border_style == BorderStyle.VOID:
