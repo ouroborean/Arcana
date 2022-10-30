@@ -42,6 +42,7 @@ class Tile():
         self.hostile_lens = None
         self.g_cost = 0
         self.h_cost = 0
+        self.marked_for_prefab = False
         self.neighbor = {
             Direction.NORTH: None,
             Direction.SOUTH: None,

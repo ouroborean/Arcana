@@ -117,13 +117,18 @@ class TileMap():
         output.reverse()
         return output
     
-    def carpet_tile_map(self, tiles):
+    def carpet_tile_map(self, tiles, prefab_count):
         """Cover the tilemap in tiles, randomly chosen from the provided constructors and random weights."""
+        odds = (self.width * self.height) // prefab_count
         for i in range(self.width * self.height):
             roll = random.randint(1, 100)
             for weight, details in tiles.items():
                 if roll <= weight:
-                    self.add_tile(Tile(*details), self.num_to_coord(i))
+                    tile = Tile(*details)
+                    roll = random.randint(1, odds)
+                    if roll == 1:
+                        tile.marked_for_prefab = True
+                    self.add_tile(tile, self.num_to_coord(i))
                     break
                 else:
                     roll -= weight
@@ -155,7 +160,6 @@ class TileMap():
                 self.get_tile(*package[0]).remove_scenery()
                 self.get_tile(*package[0]).apply_scenery(portal)
                 portal.lock_location(*package[0])
-                print(f"Adding portal {portal.id} to {portal.area_dest} at {package[0]}")
                 self.portals.append(portal)
             elif len(package[0]) > 1:
                 #if there's more than one tuple in the first part of the package,
@@ -174,7 +178,6 @@ class TileMap():
                 dest.remove_scenery()
                 dest.apply_scenery(portal)
                 portal.lock_location(dest.loc)
-                print("Portal added!")
                 self.portals.append(portal)
     
     def num_to_coord(self, num: int) -> Tuple[int, int]:

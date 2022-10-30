@@ -16,12 +16,20 @@ class Scenery():
     sprite: sdl2.ext.SoftwareSprite
     
     def __init__(self, image, status:list[str] = list()):
-        self.images = image
+        self.image_path = image
         self.status = set()
         self.loc = (0, 0)
         self.sprite = None
         for scenerystatus in status:
             self.status.add(SceneryStatus[scenerystatus])
+            
+    @property
+    def x(self) -> int:
+        return self.loc[0]
+    
+    @property
+    def y(self) -> int:
+        return self.loc[1]
     
 class Portal(Scenery):
     

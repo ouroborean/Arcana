@@ -21,3 +21,6 @@ def test_add_adjacent_tile():
     tilemap.add_adjacent_tile(tile, Tile(), Direction.NORTHWEST)
     
     assert not tile.neighbor[Direction.NORTHWEST]
+    
+
+    
