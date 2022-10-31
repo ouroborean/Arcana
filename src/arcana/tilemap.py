@@ -1,9 +1,12 @@
-from arcana.tile import Tile, TileStatus
+from arcana.tile import Tile
 from arcana.direction import Direction, offset_to_direction, direction_to_offset
 from arcana.scenery import Scenery, Portal
+from arcana.enemy import Enemy
 
 import random
 from typing import Tuple
+
+from arcana.tile_status import TileStatus
 
 class TileMap():
     
@@ -18,6 +21,7 @@ class TileMap():
         self.tiles = [None] * (self.width * self.height)
         self.portals = list()
         self.enemies = list()
+        self.enemy_landings = list()
         self.prefabs = set()
         
     def is_border_tile(self, i) -> bool:
@@ -102,9 +106,12 @@ class TileMap():
         if self.valid_coord(coord):
             return self.tiles[coord[0] + (coord[1] * self.width)]
         
-    def get_shortest_path(self, start, end) -> list[Tile]:
+    def get_shortest_path(self, start, end, crow=False) -> list[Tile]:
         """A* pathing algorithm. Returns the shortest list of tiles (counting the start and end point) between the two given Tiles."""
-        
+        if type(start) == tuple:
+            start = self.get_tile(start)
+        if type(end) == tuple:
+            end = self.get_tile(end)
         open_nodes = list()
         closed_nodes = set()
         
@@ -135,7 +142,7 @@ class TileMap():
             #new G and H-costs, set its parent to the current node to be traversed when we have the completed path, and add it to
             #the list of open nodes.
             for direction, node in current.neighbor.items():
-                if node and node.walkable:
+                if node and (node.status == TileStatus.EMPTY or crow):
                     if node in closed_nodes:
                         continue
                     if direction in ROOK_TILES:
@@ -247,6 +254,22 @@ class TileMap():
                 dest.apply_scenery(portal)
                 portal.lock_location(dest.loc)
                 self.portals.append(portal)
+    
+    def add_enemies(self, enemies, quantity):
+        print(quantity)
+        while len(self.enemy_landings) < quantity:
+            tile_num = random.randint(0, len(self.tiles) - 1)
+            if self.get_tile(self.num_to_coord(tile_num)).status == TileStatus.EMPTY and not tile_num in self.enemy_landings:
+                self.enemy_landings.append(tile_num)
+        print(len(self.enemy_landings))
+        for _ in range(quantity):
+            roll = random.randint(1, 100)
+            for weight, details in enemies.items():
+                if roll <= weight:
+                    self.enemies.append(Enemy(**details))
+                    break
+                else:
+                    roll -= weight
     
     def num_to_coord(self, num: int) -> Tuple[int, int]:
         return (num % self.width, num // self.width)

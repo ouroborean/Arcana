@@ -60,7 +60,7 @@ class Area():
             elif self.border_style == BorderStyle.VOID:
                 tilemap.void_border()
             
-            #tilemap.add_enemies(self.enemy_spawns, self.spawn_count)
+            tilemap.add_enemies(self.enemy_spawns, self.spawn_count)
             self.tilemap = tilemap
             return tilemap
     

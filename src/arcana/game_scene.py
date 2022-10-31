@@ -1,7 +1,6 @@
 from shikkoku.engine import Scene
 from shikkoku.color import *
 import sdl2.ext
-import sdl2.ext
 import sdl2.sdlttf
 from arcana.tile import Tile
 from PIL import Image
@@ -29,6 +28,17 @@ class equip_slot(enum.IntEnum):
     HANDS = 3
     LEGS = 4
     FEET = 5
+
+key_to_direction = {
+    sdl2.SDLK_KP_7: Direction.NORTHWEST,
+    sdl2.SDLK_KP_8: Direction.NORTH,
+    sdl2.SDLK_KP_9: Direction.NORTHEAST,
+    sdl2.SDLK_KP_4: Direction.WEST,
+    sdl2.SDLK_KP_6: Direction.EAST,
+    sdl2.SDLK_KP_1: Direction.SOUTHWEST,
+    sdl2.SDLK_KP_2: Direction.SOUTH,
+    sdl2.SDLK_KP_3: Direction.SOUTHEAST,
+}
 
 def get_image_from_path(file_name: str) -> Image:
     with importlib.resources.path('arcana.resources', file_name) as path:
@@ -87,6 +97,14 @@ class GameScene(Scene):
             sdl2.SDLK_w: self.press_up,
             sdl2.SDLK_KP_PLUS: self.press_plus,
             sdl2.SDLK_KP_MINUS: self.press_minus,
+            sdl2.SDLK_KP_7: self.press_direction,
+            sdl2.SDLK_KP_8: self.press_direction,
+            sdl2.SDLK_KP_9: self.press_direction,
+            sdl2.SDLK_KP_4: self.press_direction,
+            sdl2.SDLK_KP_6: self.press_direction,
+            sdl2.SDLK_KP_1: self.press_direction,
+            sdl2.SDLK_KP_2: self.press_direction,
+            sdl2.SDLK_KP_3: self.press_direction,
             sdl2.SDLK_a: self.press_left,
             sdl2.SDLK_s: self.press_down,            
             sdl2.SDLK_d: self.press_right,                        
@@ -270,12 +288,16 @@ class GameScene(Scene):
                 self.game_region.add_sprite(sprite, 2 + column * 65, 2 + row * 65)
                 if tile.scenery:
                     self.game_region.add_sprite(tile.scenery.sprite, x, y = 2 + row * 65)
-                # if tile.actor and not tile.actor == self.player:
-                #     self.game_region.add_sprite(tile.actor.sprite, 2 + tile.loc[0] * 65, 2 + tile.loc[1] * 65)
                 if tile in self.path:
                     self.game_region.add_sprite(tile.hover_lens, x, y = 2 + row * 65)
                 elif tile in self.seen_tiles:
                     self.game_region.add_sprite(tile.range_lens, x, y = 2 + row * 65)
+                else:
+                        if not self.player.in_sight_range(tile, self.tile_map.get_shortest_path):
+                            self.game_region.add_sprite(tile.fog_of_war, x, y = 2 + row * 65)
+                        else:
+                            if tile.actor and not tile.actor == self.player:
+                                self.game_region.add_sprite(tile.actor.sprite, 2 + (tile.loc[0] - column_offset) * 65, 2 + (tile.loc[1] - row_offset) * 65)
                 # if tile.item_drop:
                 #     self.game_region.add_sprite(tile.item_drop.sprite, 2 + tile.loc[0] * 65, 2 + tile.loc[1]* 65)
             
@@ -499,6 +521,12 @@ class GameScene(Scene):
     
 #region Keypress Functions
 
+    def press_direction(self, event):
+        twople = self.player + direction_to_pos[key_to_direction[event.key.keysym.sym]]
+        self.player.check_player_bump(self.tile_map.get_tile(twople))
+        self.check_actors()
+        self.render(self.render_game_region, True)
+
     def press_right(self, event):
         twople = self.player + direction_to_pos[Direction.EAST]
         self.player.check_player_bump(self.tile_map.get_tile(twople))     
@@ -582,6 +610,7 @@ class GameScene(Scene):
             tile.hover_lens = self.make_panel(TRANSPARENT_PURPLE, (64, 64))
             tile.range_lens = self.make_panel(TRANSPARENT_BLUE, (64, 64))
             tile.hostile_lens = self.make_panel(TRANSPARENT_RED, (64, 64))
+            tile.fog_of_war = self.make_panel(TRANSPARENT_GRAY, (64, 64))
             self.manifest_scenery(tile)
         if tile_map.enemies:
             for enemy, landing in zip(tile_map.enemies, tile_map.enemy_landings):

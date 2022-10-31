@@ -4,12 +4,11 @@ from arcana.statpool import Stat
 import arcana.statpool
 from arcana.playerclass import PlayerClass
 import enum
-from arcana.tilemap import TileMap
 import random
-from arcana.direction import direction_to_pos
 from arcana.equipment import Equipment, Slot
 from arcana.scenery import Portal
 import typing
+from arcana.tile_status import TileStatus
 
 if typing.TYPE_CHECKING:
     from arcana.game_scene import GameScene
@@ -29,6 +28,7 @@ class Player(Actor):
     def __init__(self):
         self.statpool = arcana.statpool.StatPool("default")
         # self.item_gain = Equipment()
+        self.sight_range = 4
         self.player = True
         self.inventory = []
         self.loc = (3, 2)
@@ -101,6 +101,21 @@ class Player(Actor):
     
     def player_swap(self):
         pass
+
+    def in_sight_range(self, tile, pathing_func):
+        eyes = self.sight_range
+        x_diff = abs(self.x - tile.x)
+        eyes -= x_diff
+        y_diff = abs(self.y - tile.y)
+        eyes -= y_diff
+        if eyes < 0:
+            return False
+        else:
+            path = pathing_func(tile, self.loc, crow=True)[1:]
+            for tile in path:
+                if tile.status == TileStatus.BLOCKED:
+                    return False
+        return True
 
     def player_move(self, tile):
         diff = (tile.loc[0] - self.loc[0], tile.loc[1] - self.loc[1])
