@@ -24,6 +24,7 @@ class Tile():
     hover_lens: sdl2.ext.SoftwareSprite
     hostile_lens: sdl2.ext.SoftwareSprite
     range_lens: sdl2.ext.SoftwareSprite
+    memory_blocker: sdl2.ext.SoftwareSprite
     prefab: bool
     
     def __add__(self, other):
@@ -36,10 +37,12 @@ class Tile():
         self.range_lens = None
         self.hostile_lens = None
         self.fog_of_war = None
+        self.memory_blocker = None
         self.g_cost = 0
         self.h_cost = 0
         self.marked_for_prefab = False
         self.prefab = False
+        self.seen = False
         self.neighbor = {
             Direction.NORTH: None,
             Direction.SOUTH: None,

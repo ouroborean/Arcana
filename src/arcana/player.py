@@ -113,7 +113,7 @@ class Player(Actor):
         else:
             path = pathing_func(tile, self.loc, crow=True)[1:]
             for tile in path:
-                if tile.status == TileStatus.BLOCKED:
+                if tile.scenery and 1 in tile.scenery.status:
                     return False
         return True
 

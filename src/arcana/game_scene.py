@@ -73,6 +73,7 @@ class GameScene(Scene):
         self.to_inventory = None
         self.enemy_spawn_clicked = False
         self.p_pressed = False
+        self.loading_into_area = False
         self.item_count = 0
         self.seen_tiles = { Tile }
         self.the_wheel = {
@@ -293,11 +294,15 @@ class GameScene(Scene):
                 elif tile in self.seen_tiles:
                     self.game_region.add_sprite(tile.range_lens, x, y = 2 + row * 65)
                 else:
-                        if not self.player.in_sight_range(tile, self.tile_map.get_shortest_path):
-                            self.game_region.add_sprite(tile.fog_of_war, x, y = 2 + row * 65)
-                        else:
+                        if self.player.in_sight_range(tile, self.tile_map.get_shortest_path):
+                            tile.seen = True
                             if tile.actor and not tile.actor == self.player:
                                 self.game_region.add_sprite(tile.actor.sprite, 2 + (tile.loc[0] - column_offset) * 65, 2 + (tile.loc[1] - row_offset) * 65)
+                        else:
+                            if tile.seen:    
+                                self.game_region.add_sprite(tile.fog_of_war, x, y = 2 + row * 65)
+                            else:
+                                self.game_region.add_sprite(tile.memory_blocker, x, y = 2 + row * 65)
                 # if tile.item_drop:
                 #     self.game_region.add_sprite(tile.item_drop.sprite, 2 + tile.loc[0] * 65, 2 + tile.loc[1]* 65)
             
@@ -405,15 +410,17 @@ class GameScene(Scene):
         for target in self.targets:
             target.turn_counter += self.player.speed
             while target.turn_counter >= target.speed:
-                target.npc_think(self.send_tile(target))
-                target.turn_counter -= target.speed  
+                target.npc_think(self.tile_map.get_tile(target.loc))
+                target.turn_counter -= target.speed
 
     def send_tile(self, target):
         target_loc = self.tile_map.get_tile((target.loc))
         return target_loc
            
     def change_area(self, portal):
+        self.loading_into_area = True
         self.path.clear()
+        self.targets.clear()
         self.load_into_area(area_db[portal.area_dest])
         for exit_portal in self.tile_map.portals:
             if exit_portal.portal_id == portal.portal_id:
@@ -423,9 +430,9 @@ class GameScene(Scene):
 
     def enemy_spawn(self, tile, npc):
         self.manifest_npc(npc)
+        npc.loc = tile.loc
         self.tile_map.get_tile(tile.loc).actor = npc
         self.targets.append(npc)
-        npc.loc = tile.loc
         self.enemy_spawn_clicked = False
             
     def spawn_player(self, player, loc):
@@ -524,32 +531,42 @@ class GameScene(Scene):
     def press_direction(self, event):
         twople = self.player + direction_to_pos[key_to_direction[event.key.keysym.sym]]
         self.player.check_player_bump(self.tile_map.get_tile(twople))
-        self.check_actors()
-        self.render(self.render_game_region, True)
+        if not self.loading_into_area:
+            self.check_actors()
+            self.render(self.render_game_region, True)
+        self.loading_into_area = False
 
     def press_right(self, event):
         twople = self.player + direction_to_pos[Direction.EAST]
-        self.player.check_player_bump(self.tile_map.get_tile(twople))     
-        self.check_actors()
-        self.render(self.render_game_region, True)
+        self.player.check_player_bump(self.tile_map.get_tile(twople))
+        if not self.loading_into_area:
+            self.check_actors()
+            self.render(self.render_game_region, True)
+        self.loading_into_area = False
     
     def press_left(self, event):
         twople = self.player + direction_to_pos[Direction.WEST]      
         self.player.check_player_bump(self.tile_map.get_tile(twople))
-        self.check_actors() 
-        self.render(self.render_game_region, True)
+        if not self.loading_into_area:
+            self.check_actors()
+            self.render(self.render_game_region, True)
+        self.loading_into_area = False
 
     def press_up(self, event):
         twople = self.player + direction_to_pos[Direction.NORTH]
         self.player.check_player_bump(self.tile_map.get_tile(twople))
-        self.check_actors()
-        self.render(self.render_game_region, True)       
+        if not self.loading_into_area:
+            self.check_actors()
+            self.render(self.render_game_region, True)
+        self.loading_into_area = False     
     
     def press_down(self, event):
         twople = self.player + direction_to_pos[Direction.SOUTH]       
         self.player.check_player_bump(self.tile_map.get_tile(twople))
-        self.check_actors()  
-        self.render(self.render_game_region, True) 
+        if not self.loading_into_area:
+            self.check_actors()
+            self.render(self.render_game_region, True)
+        self.loading_into_area = False
 
     def press_p(self, event):
         print("P pressed!")
@@ -566,8 +583,10 @@ class GameScene(Scene):
 
     def press_z(self, event):
         self.player.player_stand(self.tile_map.get_tile(self.player.loc))
-        self.check_actors()  
-        self.render(self.render_game_region, True)
+        if not self.loading_into_area:
+            self.check_actors()
+            self.render(self.render_game_region, True)
+        self.loading_into_area = False
 
     def press_space(self, event):
         if self.path:
@@ -611,6 +630,7 @@ class GameScene(Scene):
             tile.range_lens = self.make_panel(TRANSPARENT_BLUE, (64, 64))
             tile.hostile_lens = self.make_panel(TRANSPARENT_RED, (64, 64))
             tile.fog_of_war = self.make_panel(TRANSPARENT_GRAY, (64, 64))
+            tile.memory_blocker = self.make_panel(BLACK, (64, 64))
             self.manifest_scenery(tile)
         if tile_map.enemies:
             for enemy, landing in zip(tile_map.enemies, tile_map.enemy_landings):
