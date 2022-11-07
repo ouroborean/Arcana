@@ -1,19 +1,13 @@
 from arcana.direction import Direction, counter_direction
 import sdl2.ext
-
+from arcana.tile_status import TileStatus
 from typing import Tuple, TYPE_CHECKING
-import enum
+from arcana.player import Player
+from arcana.ally import Ally
+from arcana.enemy import Enemy
 
 if TYPE_CHECKING:
     from arcana.scenery import Scenery
-
-@enum.unique
-class TileStatus(enum.IntEnum):
-    EMPTY = 0
-    HOSTILE = 1
-    ALLIED = 2
-    BLOCKED = 3
-
 
 class Tile():
     
@@ -30,6 +24,8 @@ class Tile():
     hover_lens: sdl2.ext.SoftwareSprite
     hostile_lens: sdl2.ext.SoftwareSprite
     range_lens: sdl2.ext.SoftwareSprite
+    memory_blocker: sdl2.ext.SoftwareSprite
+    prefab: bool
     
     def __add__(self, other):
         return (self.loc[0] + other[0], self.loc[1] + other[1])
@@ -40,8 +36,13 @@ class Tile():
         self.hover_lens = None
         self.range_lens = None
         self.hostile_lens = None
+        self.fog_of_war = None
+        self.memory_blocker = None
         self.g_cost = 0
         self.h_cost = 0
+        self.marked_for_prefab = False
+        self.prefab = False
+        self.seen = False
         self.neighbor = {
             Direction.NORTH: None,
             Direction.SOUTH: None,
@@ -69,11 +70,20 @@ class Tile():
     def status(self) -> TileStatus:
         """Returns the status of the tile, as it relates to the allegiance of the actors on it, and the status of any terrain or scenery it might contain."""
         #TODO check for allied, enemy, or player status of actor, if one exists
-        
-        if self.scenery and not 0 in self.scenery.status:
+        if self.actor:
+            if type(self.actor) == Player:
+                return TileStatus.PLAYER
+            elif type(self.actor) == Enemy:
+                return TileStatus.HOSTILE
+            elif type(self.actor) == Ally:
+                return TileStatus.ALLIED
+        elif self.scenery and not 0 in self.scenery.status:
             return TileStatus.BLOCKED
         else:
             return TileStatus.EMPTY
+    
+    def mark_as_prefab(self):
+        self.prefab = True
     
     def set_g_cost(self, cost):
         """The cumulative pathing value of the tile along the path the A* algorithm is currently walking. Will self adjust to catch changes in the shortest path, for erroneous circuitous pathing."""
@@ -98,11 +108,15 @@ class Tile():
     def walkable(self, pedestrian):
         """Checks the state of the tile and the state of the Actor attempting to enter it and returns a boolean value defining whether or not they can."""
         #TODO check values of the pedestrian Actor for allegiance and affects like insubstantial...ness
-        if self.status == TileStatus.BLOCKED:
-            output = False
-        elif self.status == TileStatus.EMPTY:
-            output = True
-        return output
+        if self.status == TileStatus.HOSTILE and type(pedestrian) in (Player, Ally):
+            return False
+        elif self.status == TileStatus.ALLIED and type(pedestrian) == Enemy:
+            return False
+        elif self.status == TileStatus.BLOCKED:
+            return False
+        elif self.status == TileStatus.PLAYER:
+            return False
+        return True
     
     def set_loc(self, location):
         self.loc = location
