@@ -43,6 +43,9 @@ class Area():
         self.tilemap = None
         self.dimensions = dimensions
         self.prefab_count = 0
+        self.static_enemies = list()
+        self.static_prefabs = list()
+        self.unique_spawns = dict()
         
         
     
@@ -54,12 +57,15 @@ class Area():
             tilemap.carpet_tile_map(self.floor_tiles, self.prefab_count)
             tilemap.add_random_scenery(self.terrain_tiles, self.clutter_seed)
             tilemap.add_portals(self.portals)
-            tilemap.add_prefab(self.prefabs)
+            for prefab_set in self.static_prefabs:
+                tilemap.add_static_prefab(prefab_set[0], prefab_set[1])
+            tilemap.add_prefabs_from_seed(self.prefabs)
             if self.border_style == BorderStyle.TERRAIN:
                 tilemap.border_tile_map(self.terrain_tiles[list(self.terrain_tiles.keys())[0]])
             elif self.border_style == BorderStyle.VOID:
                 tilemap.void_border()
-            
+            for enemy_set in self.static_enemies:
+                tilemap.add_static_enemies(enemy_set[0], enemy_set[1])
             tilemap.add_enemies(self.enemy_spawns, self.spawn_count)
             self.tilemap = tilemap
             return tilemap
@@ -69,6 +75,7 @@ forest_floor_tiles = {65: ("grasstile.png",), 35: ("dirttile.png",)}
 forest_terrain_tiles = {75: ("treetile.png", ("SOLID", "OPAQUE")), 15: ("bush.png", ("SOLID",)), 10: ("rock.png", ("SOLID",))}
 forest_enemy_group = {36: {"name": "Goblin", "statpool": "goblin", "level": 1, "image": "goblin.png", "damage_range": (1, 5)}, 34: {"name": "Kobold", "statpool": "kobold", "level": 1, "image": "kobold.png", "damage_range": (2, 3)}, 20: {"name": "Wolf", "statpool": "wolf", "level": 1, "image": "wolf.png", "damage_range": (2, 5)}, 10: {"name": "Ogre", "statpool": "ogre", "level": 2, "image": "ogre.png", "damage_range": (3, 8)}}
 forest_prefabs = {51: prefab_db["druid"], 49: prefab_db["tree_alley"]}
+forest_static_enemies = ({"name": "Tentagoblin", "statpool": "tentagoblin", "level": 3, "image": "tentagoblin.png", "damage_range": (2, 7)},)
 
 def make_test_area():
     area = Area((33, 13))
@@ -79,6 +86,7 @@ def make_test_area():
     area.prefabs = forest_prefabs
     area.spawn_count = 6
     area.prefab_count = 6
+    area.static_prefabs.append((prefab_db["tree_arena"], (20, 4)))
     #protocol for adding portals:
     # List of tuples, each tuple covering a single portal
     # ( (Either Coordinates for the static location of the portal or a tuple of two coordinates for a range of random possible locations), (constructor arguments for the portal Scenery object))

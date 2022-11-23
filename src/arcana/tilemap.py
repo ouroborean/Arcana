@@ -186,19 +186,27 @@ class TileMap():
                 self.get_tile(self.num_to_coord(i)).apply_scenery(Scenery(*args))
     
     
-    def add_prefab(self, prefabs):
+    def add_prefabs_from_seed(self, prefabs):
         prefab_markers = [tile for tile in self.tiles if tile.marked_for_prefab]
         for tile in prefab_markers:
             for odds, prefab in prefabs.items():
                 roll = random.randint(1, 100)
                 newfab = prefab()
                 if roll <= odds and not newfab.name in self.prefabs:
-                    origin = (tile.loc[0] - newfab.entrance_loc[0], tile.loc[1] - newfab.entrance_loc[1])
-                    if self.space_for_prefab(newfab, origin):
-                        self.add_tiles_by_prefab(newfab, origin)
-                        self.prefabs.add(newfab.name)
+                    self.add_prefab(newfab, tile)
                 else:
                     roll -= odds
+                    
+    def add_prefab(self, newfab, origin_tile):
+        origin = (origin_tile.loc[0] - newfab.entrance_loc[0], origin_tile.loc[1] - newfab.entrance_loc[1])
+        if self.space_for_prefab(newfab, origin):
+            self.add_tiles_by_prefab(newfab, origin)
+            self.prefabs.add(newfab.name)
+            
+    def add_static_prefab(self, prefab, origin_loc):
+        if self.valid_coord(origin_loc):
+            tile = self.get_tile(origin_loc)
+            self.add_prefab(prefab(), tile)
                     
     def space_for_prefab(self, prefab, origin):
         for tile in prefab.tiles:
