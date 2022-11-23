@@ -64,9 +64,24 @@ def make_tree_alley():
     
     return prefab
 
+def make_tree_arena():
+    prefab = Prefab((9, 9))
+    prefab.entrance_loc = (0, 4)
+    prefab.name = "tree_arena"
+    for i in range(9):
+        prefab.add_tiles_in_line(tile_grass, (0, i), Direction.EAST, 9)
+    prefab.add_scenery_in_line(scen_tree, (0, 0), Direction.EAST, 9)
+    prefab.add_scenery_in_line(scen_tree, (0, 8), Direction.EAST, 9)
+    prefab.add_scenery_in_line(scen_tree, (8, 1), Direction.SOUTH, 7)
+    prefab.add_scenery_in_line(scen_tree, (0, 1), Direction.SOUTH, 3)
+    prefab.add_scenery_in_line(scen_tree, (0, 5), Direction.SOUTH, 3)
+    
+    return prefab
+
 prefab_db = {
     "druid": make_druid_circle,
-    "tree_alley": make_tree_alley
+    "tree_alley": make_tree_alley,
+    "tree_arena": make_tree_arena
 }
     
     

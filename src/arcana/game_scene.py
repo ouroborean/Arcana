@@ -1,5 +1,6 @@
 from shikkoku.engine import Scene
 from shikkoku.color import *
+from shikkoku.text_formatter import *
 import sdl2.ext
 import sdl2.sdlttf
 from arcana.tile import Tile
@@ -10,6 +11,7 @@ import importlib.resources
 from arcana.player import Player
 from arcana.direction import direction_to_pos, Direction
 from arcana.area import area_db
+from arcana.dialogue import Conversation, Dialogue
 import enum
 import functools
 
@@ -75,6 +77,7 @@ class GameScene(Scene):
         self.p_pressed = False
         self.loading_into_area = False
         self.item_count = 0
+        self.conversation = None
         self.seen_tiles = { Tile }
         self.the_wheel = {
             0 : (0, -1),
@@ -108,7 +111,8 @@ class GameScene(Scene):
             sdl2.SDLK_KP_3: self.press_direction,
             sdl2.SDLK_a: self.press_left,
             sdl2.SDLK_s: self.press_down,            
-            sdl2.SDLK_d: self.press_right,                        
+            sdl2.SDLK_d: self.press_right,
+            sdl2.SDLK_e: self.press_confirm,                       
             sdl2.SDLK_RIGHT: self.press_right,
             sdl2.SDLK_LEFT: self.press_left,
             sdl2.SDLK_UP: self.press_up,
@@ -159,6 +163,7 @@ class GameScene(Scene):
         self.button_region = self.region.subregion(1000, 500, 150, 150)
         self.mouse_cursor = self.make_button(self.app.load("rogueplayer.png", width=50, height=50))
         self.inventory_region = self.region.subregion(200, 200, 600, 300)
+        self.dialogue_region = self.game_region.subregion(7, 294, 900, 250)
         self.hovered_tile = None
         self.tile_select = None
         self.dest = None
@@ -190,10 +195,73 @@ class GameScene(Scene):
         self.item_drop_button = None
         self.options_button = None
         self.skills_button = None
+        self.selected_choice = 0
         self.get_created_character(Player())
-        print(self.player)
         self.load_into_area(area_db["test"])
+        self.start_conversation(Conversation([Dialogue("Heyo I needsa talk to yoooooo", "Your Mother"), Dialogue("It's something really important...", "Your Mother", choices=["Fuck you!", "My mom?!", "Aww yeah..."]), Dialogue("Err, I guess not, nevermind.", "Your Mother")]))
+    
+    def render_dialogue_region(self, reset=False):
+        self.dialogue_region.clear()
+        if self.in_conversation:
+            self.dialogue_panel = self.make_panel(TRANSPARENT_WHITE, self.dialogue_region.size())
+            self.dialogue_panel = self.border_sprite(self.dialogue_panel, BLACK, 2)
+            
+            transpanel = self.make_panel(TRANSPARENT, (1, 1))
+            self.dialogue_panel = self.render_bordered_text(self.title_font, self.conversation.active.text, WHITE, BLACK, self.dialogue_panel, 10, 20, 1, True, 800, self.title_font.size)
+            if self.conversation.active.speaker:
+                name_width = get_string_width(self.title_font.size, self.conversation.active.speaker) + 4
+                transpanel = self.make_panel(TRANSPARENT, (name_width, 35))
+                transpanel = self.render_bordered_text(self.title_font, self.conversation.active.speaker, WHITE, BLACK, transpanel, 1, 1, 1)
+            
+            if reset:
+                self.dialogue_region.clear()
+                self.dialogue_region.add_sprite(self.dialogue_panel, 0, 0)
+                self.dialogue_region.add_sprite(transpanel, 15, -20)
+                if self.conversation.active.choices:
+                    necessary_width = get_string_width(self.title_font.size, self.conversation.active.longest_choice) + 4
+                    necessary_height = 35 * len(self.conversation.active.choices) + (2 * len(self.conversation.active.choices))
+                    panel = self.make_panel_button(TRANSPARENT_WHITE, (necessary_width, necessary_height))
+                    for i, choice in enumerate(self.conversation.active.choices):
+                        if i == self.selected_choice:
+                            border_color = BLUE
+                            border_size = 1
+                        else:
+                            border_size = 1
+                            border_color = BLACK
+                        panel = self.render_bordered_text(self.title_font, choice, WHITE, border_color, panel, 3, 3 + (35 * i), border_size)
+                    panel = self.border_sprite(panel, BLACK, 2)
+                    panel.motion += self.choice_hover
+                    panel.click += self.choice_click
+                    self.dialogue_region.add_sprite(panel, 900 - necessary_width, -necessary_height)
+    
+    def choice_click(self, button, event):
+        self.conversation.choices_made.append(self.conversation.active.choices[self.selected_choice])
+        self.next_slide()
+    
+    def choice_hover(self, button, event):
+        if (event.motion.y - button.y) // 35 != self.selected_choice:
+            self.selected_choice = (event.motion.y - button.y) // 35
+            self.render(self.render_dialogue_region, reset=True)
+    
+    def start_conversation(self, conversation):
+        self.conversation = conversation
+        self.render(self.render_dialogue_region, True)
+    
+    @property
+    def in_conversation(self) -> bool:
+        return bool(self.conversation)
+    
+    def press_confirm(self, event):
+        self.next_slide()
         
+    def next_slide(self):
+        if self.in_conversation:
+            if not self.conversation.progress_conversation():
+                for choice in self.conversation.choices_made:
+                    print("Player chose " + choice + "!")
+                self.conversation = None
+            self.render(self.render_dialogue_region, True)
+    
     def render_equip_menu(self, reset=False):
         if not self.equipment_panel:
             self.equipment_panel = self.make_panel(WHITE, self.inventory_region.size())
@@ -249,6 +317,7 @@ class GameScene(Scene):
         
         self.render_game_region(reset)
         self.render_button_region(reset)
+        self.render_dialogue_region(reset)
         
     def render_game_region(self, reset=False):
         if not self.game_panel:
@@ -529,12 +598,13 @@ class GameScene(Scene):
 #region Keypress Functions
 
     def press_direction(self, event):
-        twople = self.player + direction_to_pos[key_to_direction[event.key.keysym.sym]]
-        self.player.check_player_bump(self.tile_map.get_tile(twople))
-        if not self.loading_into_area:
-            self.check_actors()
-            self.render(self.render_game_region, True)
-        self.loading_into_area = False
+        if not self.in_conversation:
+            twople = self.player + direction_to_pos[key_to_direction[event.key.keysym.sym]]
+            self.player.check_player_bump(self.tile_map.get_tile(twople))
+            if not self.loading_into_area:
+                self.check_actors()
+                self.render(self.render_game_region, True)
+            self.loading_into_area = False
 
     def press_right(self, event):
         twople = self.player + direction_to_pos[Direction.EAST]
